@@ -1,0 +1,21 @@
+1 lsblk
+2 yum install mdadm
+3 mdadm --create --verbose /dev/md0 --level=10 --raid-devices=4 /dev/sdb /dev/sdc /dev/sdd /dev/sde
+4 mdadm --detail /dev/md0
+5 fdisk /dev/md0
+  PRESS m
+  PRESS n
+  PRESS p
+  PRESS ENTER ENTER ENTER
+  PRESS m then w (Write and Exit)
+6 lsblk
+7 mkfs.ext4 /dev/md0p1
+8 lsblk
+9 mkdir /mnt/raid10
+10 mount /dev/md0p1 /mnt/raid10/
+11 blkid
+12 vi /etc/fstab
+    UUID=d5abc6d1-7c34-468b-b015-3a2c036ebca9 /mnt/raid10 ext4 defaults 0 0
+13 mount -a
+14 df -Th
+15 mdadm --detail /dev/md0
