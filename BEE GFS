@@ -44,6 +44,9 @@ Client
  mkdir -p /data/beegfs/beegfs_mgmtd
  ./beegfs-setup-mgmtd -p /data/beegfs/beegfs_mgmtd
  systemctl start beegfs-mgmtd && systemctl status beegfs-mgmtd
+
+ nano /etc/beegfs/beegfs-meta.conf
+ [define /etc/beegfs/connauthfile path in config file]
  - Install and configure metadata service:
  yum install -y beegfs-meta
  ./beegfs-setup-meta -p /mnt/sda1/ -s 1 -m beegfs-mgmt-srv-01 -f
