@@ -1,0 +1,28 @@
+--- RAID [ 1 Machine ] [ CentOS 7 VMs ] ---
+ 
+0 - +2 DISK ADD
+1 - +2 DISK ADD
+5 - +4 DISK ADD
+6 - +4 DISK ADD
+10 - +4 DISK ADD
+
+--- LVM [ 1 Machine ] [ CentOS 7 VMs ] ---
+
++3 DISK ADD
+
+--- BEEGFS [ 4 Machine ] [ CentOS 8 VMs ] ---
+
+Master [ + 1 DISK ADD ]
+Server 1 [ + 2 DISK ADD ] 
+Server 2 [ + 2 DISK ADD ] 
+Client 
+
+TRUE NAS----- OS
+
+--- Luster [ 4 Machine ] [ CentOS 8 VMs ] ---
+
+Master [ + 1 DISK ADD ]
+Server 1 [ + 1 DISK ADD ] 
+Server 2 [ + 1 DISK ADD ] 
+Client 
+
