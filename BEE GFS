@@ -1,4 +1,11 @@
-BeeGFS File System Installation and Configuration Guide for CentOS 8 VMs
+--- BEEGFS [ 4 Machine ] [ CentOS 8 VMs ] ---
+
+Master [ + 1 DISK ADD ]
+Server 1 [ + 2 DISK ADD ] 
+Server 2 [ + 2 DISK ADD ] 
+Client 
+
+-----------------------------------------------------------------------
 
 1. General Configuration (All Nodes):
 
@@ -6,7 +13,7 @@ BeeGFS File System Installation and Configuration Guide for CentOS 8 VMs
  yum install -y nano wget && cd /etc/yum.repos.d/ && wget https://www.beegfs.io/release/beegfs_7.4.2/dists/beegfs-rhel8.repo
 
 - Edit hosts file:
- nano /etc/hosts
+ vi /etc/hosts
  192.168.1.20 beegfs-mgmt-meta-srv-01
  192.168.1.40 beegfs-storage-01
  192.168.1.41 beegfs-storage-02
@@ -15,9 +22,9 @@ BeeGFS File System Installation and Configuration Guide for CentOS 8 VMs
 2. Configuration on Meta and Mgmt Node:
 
 - Format and mount drive:
- mkfs.ext4 /dev/sda
+ mkfs.ext4 /dev/nvme0n2
  mkdir /mnt/sda1/
- mount /dev/sda /mnt/sda1/
+ mount /dev/nvme0n2 /mnt/sda1/
 
 - Install management daemon:
  yum install -y beegfs-mgmtd
@@ -58,7 +65,7 @@ BeeGFS File System Installation and Configuration Guide for CentOS 8 VMs
  df -h
 
 - Configure storage service:
- nano /etc/beegfs/beegfs-storage.conf
+ vi /etc/beegfs/beegfs-storage.conf
  [define /etc/beegfs/connauthfile path in config file]
 
 - For Node-01:
@@ -75,11 +82,11 @@ BeeGFS File System Installation and Configuration Guide for CentOS 8 VMs
 4. Configuration on Client Node:
 
 - Disable SELinux:
- nano /etc/selinux/config [set disabled]
+ vi /etc/selinux/config [set disabled]
  setenforce 0
 
 - Install client and helper daemon:
- yum install -y kernel-devel beegfs-helperd
+ yum install -y kernel-devel beegfs-helperd beegfs-client
 
 - Rebuild and configure client:
  /etc/init.d/beegfs-client rebuild 
