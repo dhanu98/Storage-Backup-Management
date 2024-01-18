@@ -1,0 +1,86 @@
+BeeGFS File System Installation and Configuration Guide for CentOS 8 VMs
+
+1. General Configuration (All Nodes):
+
+- Install nano and wget:
+ yum install -y nano wget && cd /etc/yum.repos.d/ && wget https://www.beegfs.io/release/beegfs_7.4.2/dists/beegfs-rhel8.repo
+
+- Edit hosts file:
+ nano /etc/hosts
+ 192.168.1.20 beegfs-mgmt-meta-srv-01
+ 192.168.1.40 beegfs-storage-01
+ 192.168.1.41 beegfs-storage-02
+ 192.168.1.42 beegfs-client-01
+
+2. Configuration on Meta and Mgmt Node:
+
+- Format and mount drive:
+ mkfs.ext4 /dev/sda
+ mkdir /mnt/sda1/
+ mount /dev/sda /mnt/sda1/
+
+- Install management daemon:
+ yum install -y beegfs-mgmtd
+
+- Generate connection auth file:
+ dd if=/dev/random of=/etc/beegfs/connauthfile bs=128 count=1
+ chown root:root /etc/beegfs/connauthfile
+ chmod 400 /etc/beegfs/connauthfile
+
+- Securely copy connection auth file to other nodes:
+ scp /etc/beegfs/connauthfile to beegfs-storage-01 beegfs-storage-02 client-node to /etc/beegfs directory
+
+- Configure management daemon:
+ nano /etc/beegfs/beegfs-mgmtd.conf
+ [define /etc/beegfs/connauthfile path in config file]
+ cd /opt/beegfs/sbin/
+ mkdir -p /data/beegfs/beegfs_mgmtd
+ ./beegfs-setup-mgmtd -p /data/beegfs/beegfs_mgmtd
+ systemctl start beegfs-mgmtd && systemctl status beegfs-mgmtd
+ - Install and configure metadata service:
+ yum install -y beegfs-meta
+ ./beegfs-setup-meta -p /mnt/sda1/ -s 1 -m beegfs-mgmt-srv-01 -f
+ systemctl start beegfs-meta && systemctl status beegfs-meta
+
+3. Configuration on Storage Nodes (Node-01 and Node-02):
+ 
+- Install storage service:
+ yum install beegfs-storage
+ 
+- Prepare storage devices:
+ lsblk
+ mkfs.xfs /dev/nvme0n2
+ mkfs.xfs /dev/nvme0n3
+ mkdir /mnt/raid1
+ mkdir /mnt/raid2
+ mount /dev/nvme0n2 /mnt/raid1
+ mount /dev/nvme0n3 /mnt/raid2
+ df -h
+
+- Configure storage service:
+ nano /etc/beegfs/beegfs-storage.conf
+ [define /etc/beegfs/connauthfile path in config file]
+
+- For Node-01:
+ ./beegfs-setup-storage -p /mnt/raid1/ -s 3 -i 301 -m beegfs-mgmt-meta-srv-01
+ ./beegfs-setup-storage -p /mnt/raid2/ -s 3 -i 302 -m beegfs-mgmt-meta-srv-01
+
+- For Node-02:
+ ./beegfs-setup-storage -p /mnt/raid1/ -s 4 -i 401 -m beegfs-mgmt-meta-srv-01
+ ./beegfs-setup-storage -p /mnt/raid2/ -s 4 -i 402 -m beegfs-mgmt-meta-srv-01
+
+- Start and verify storage service:
+ systemctl start beegfs-storage && systemctl status beegfs-storage
+
+4. Configuration on Client Node:
+
+- Disable SELinux:
+ nano /etc/selinux/config [set disabled]
+ setenforce 0
+
+- Install client and helper daemon:
+ yum install -y kernel-devel beegfs-helperd
+
+- Rebuild and configure client:
+ /etc/init.d/beegfs-client rebuild 
+ ./beegfs-setup-client -m beegfs-mgmt-meta-srv
