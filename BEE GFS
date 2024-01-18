@@ -37,6 +37,8 @@ cd /opt/beegfs/sbin/
  chmod 400 /etc/beegfs/connauthfile
 
 - Securely copy connection auth file to other nodes:
+------ yum install beegfs-storage ------------ NODE 1 NODE 2---------
+------  yum install -y kernel-devel beegfs-helperd beegfs-client --------- CLIENT ------------
  scp /etc/beegfs/connauthfile to beegfs-storage-01 beegfs-storage-02 client-node to /etc/beegfs directory
 
 - Configure management daemon:
