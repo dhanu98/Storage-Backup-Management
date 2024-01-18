@@ -1,0 +1,71 @@
+This guide provides step-by-step instructions for installing the Lustre file system on a CentOS 8
+environment. Please follow the steps carefully to ensure proper configuration.
+
+Initial Setup:
+1. Create four VMs from the Centos-8 Image.
+2. Attach an additional HDD to OSS-1, OSS-2, and MGS-MDS VMs
+
+Common Operations for All VMs:
+- Install nano and disable firewalld:
+   yum install nano && systemctl stop firewalld && systemctl disable firewalld 
+- Disable SELinux:
+   Edit /etc/selinux/config to set SELinux as disabled.
+   Then execute: setenforce 0
+
+- Configure the Lustre repository:
+ Edit /etc/yum.repos.d/lustre.repo and add the following:
+   [lustre-server]
+   name=lustre-server
+   baseurl=https://downloads.whamcloud.com/public/lustre/latest-release/el8.9/server
+   gpgcheck=0
+   [lustre-client]
+   name=lustre-client
+   baseurl=https://downloads.whamcloud.com/public/lustre/latest-release/el8.9/client
+   gpgcheck=0
+   [e2fsprogs-wc]
+   name=e2fsprogs-wc
+   baseurl=https://downloads.whamcloud.com/public/e2fsprogs/latest/el8
+   gpgcheck=0
+
+- Update and install Lustre packages:
+   yum update && yum upgrade -y e2fsprogs
+   yum install -y lustre-tests
+- Configure network interface:
+   Edit /etc/modprobe.d/lnet.conf and add: options lnet networks="tcp0(ens33)" (replace ens33 with your interface name)
+ 
+Then execute:
+   modprobe lustre
+   lsmod | grep lustre
+   modprobe lnet
+   lsmod | grep lnet
+   lctl network up
+
+- Optional: Test network connection (example):
+   lctl ping 192.168.1.34@tcp0
+- Reboot all VMs after configuration.
+
+Configuration for MDS-MGS VM:
+- Partition and format the extra attached HDD:
+   fdisk /dev/nvme0n2
+   mkfs.ext4 /dev/nvme0n2p1
+- Create and mount the Lustre filesystem:
+   mkfs.lustre --reformat --fsname=lustrefs --mgs --mdt --index=0 /dev/nvme0n2p1
+   mkdir /mnt/mdt
+   mount -t lustre /dev/nvme0n2p1 /mnt/mdt/
+
+Configuration for OSS-OST VM-1:
+- Prepare the disk and create the OST:
+   mkfs.ext4 /dev/nvme0n2
+   mkfs.lustre --reformat --ost --fsname=lustrefs --mgsnode=192.168.1.30@tcp --index=0 /dev/nvme0n2
+   mkdir /ostoss_mount0
+   mount -t lustre /dev/nvme0n2 /ostoss_mount0
+
+Configuration for Client VMs:
+- Ensure connectivity to the MGS node:
+   lctl ping 192.168.1.30@tcp0
+- Mount the Lustre filesystem:
+   mkdir /mnt/lustre
+   mount -t lustre 192.168.1.30@tcp0:/lustrefs /mnt/lustre
+- Test file creation (optional):
+   cd /mnt/lustre
+   dd if=/dev/zero of=filename bs=2G count=1
