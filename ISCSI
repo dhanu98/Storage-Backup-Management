@@ -1,0 +1,288 @@
+Create 2 VM by Cent OS-7 [provided by Sir]
+open vm give by sir -> cent os -7 -> from folder-> F:\vm\Raid 0 Cluster\SBM-VM\CENTOS-7.ovf
+
+1st Master -> +2 Extra HDDs 
+
+2nd Client ->
+
+user:root
+pass:cdac
+--------------------------------------------------------------------------
+
+
+]]]]]]]]]]]]]]]]]]]]]]]]]]]]]ON Both nodes[[[[[[[[[[[[[[[[[[[[[[[[[[
+
+    >>systemctl stop firewalld && systemctl disable firewalld && systemctl mask firewalld
+    >>sudo sed -i 's/enforcing/disabled/g' /etc/selinux/config
+
+]]]]]]]------------------------------------------------------[[[[[[[
+
+
+
+
+
+]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]ON ISCSI Master[[[[[[[[[[[[[[[[[[[[[[[[[[
+
+{Create Logical Volume for that ->first create PV ,then VG and on that VG create 2LV of 3Gb and 2Gb}
+    >>pvs
+    >>vgs
+
+
+    >>pvcreate /dev/sdb /dev/sdc
+    >>vgcreate HPCSA /dev/sdb /dev/sdc
+
+    >>pvs
+    >>vgs
+
+    >>lvcreate -n hpcsa_lab --size 3G HPCSA
+    >>lvcreate -n ditiss_lab --size 2G HPCSA
+    >>lvs
+
+
+>> yum install -y targetcli
+
+>>  targetcli                       [see if works]
+{1. Create Block Storage}
+    [in targetcli shell]  
+
+        /> ls
+        /> cd /backstores/block
+
+        /backstores/block> ls
+        /backstores/block> create block1 /dev/mapper/HPCSA-hpcsa_lab             [here HPCSA is VG and hpcsa-lab is LV ; so here we are creating Block Storage for LV ->hpcsa-lab]
+        /backstores/block> ls                                                   [see if block1 is visible]
+
+        /backstores/block>    cd /iscsi
+
+
+
+{2. Create IQN (Internet Qualified Names)}
+
+        /iscsi> create iqn.2024-01.cdac.acts.hpcsa.sbm:disk1                    [this is like 'fqdn']
+
+        /iscsi> cd iqn.2024-01.cdac.acts.hpcsa.sbm:disk1/                       
+        
+        /iscsi/iqn.20...csa.sbm:disk1> ls                                       [see 'tpg1' this is target which has 'acls','luns','portals']
+
+
+
+]]]]]]]------------------------------------------------------[[[[[[[
+
+
+
+
+
+
+]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]ON ISCSI CLIENT[[[[[[[[[[[[[[[[[[[[[[[[[[
+
+>>yum install iscsi-initiator-utils               [Install the required package for iSCSI] [This command installs `iscsi-initiator-utils`, which is a daemon for managing Internet Small Computer System Interface (iSCSI) sessions.]
+
+                {Navigate to the iSCSI directory and check the initiator name}
+
+>>cd /etc/iscsi/
+>>cat initiatorname.iscsi    [copy this after = 'iqn.1994-05.com.redhat:1a7a1d207476']                       [# change client name if required] [This displays the name of the iSCSI initiator, which you can change if necessary.]
+
+
+>>systemctl restart iscsi                           [this restarts the iSCSI service, applying any changes made to its configuration.]
+
+
+]]]]]]]------------------------------------------------------[[[[[[[
+
+
+
+
+
+]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]ON ISCSI Master[[[[[[[[[[[[[[[[[[[[[[[[[[
+>>  targetcli  
+{3. Create ACLs for Client iqn in '/iscsi/iqn.2024-01.cdac.acts.hpcsa.sbm:disk1/acls' }
+
+        /iscsi/iqn.20...csa.sbm:disk1>  cd acls
+        /iscsi/iqn.20...csa.sbm:disk1/acls> create iqn iqn.1994-05.com.redhat:1a7a1d207476                  ['initiatorname' copied from ISCSI Client]
+        /iscsi/iqn.20...csa.sbm:disk1/acls> ls
+        /iscsi/iqn.20...csa.sbm:disk1/acls> cd ..
+        /iscsi/iqn.20...csa.sbm:disk1/tpg1>
+
+{4. Mapping backstores // Associating Target Portal in '/iscsi/iqn.2024-01.cdac.acts.hpcsa.sbm:disk1/luns'}
+        /iscsi/iqn.20...bm:disk1/tpg1> cd luns                              [lun is Logical Unit Number]
+        /iscsi/iqn.20...sk1/tpg1/luns>                             
+
+        /iscsi/iqn.20...sk1/tpg1/luns> create /backstores/block/block1
+
+
+        /iscsi> exit
+                                Global pref auto_save_on_exit=true
+                                Last 10 configs saved in /etc/target/backup/.
+                                Configuration saved to /etc/target/saveconfig.json
+        
+
+
+
+>> systemctl restart target
+>> cat /etc/target/saveconfig.json
+ 
+
+]]]]]]]------------------------------------------------------[[[[[[[
+
+
+
+
+
+]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]ON ISCSI CLIENT[[[[[[[[[[[[[[[[[[[[[[[[[[
+>> systemctl status iscsid 
+>>  systemctl start iscsid &&  systemctl status iscsid
+
+
+>>iscsiadm -m discovery -t st -p 192.168.90.228 --login
+[if no route to host 'stop & disable firewalld on both nodes' and then 'systermctl restart target']
+
+
+
+
+>>iscsiadm -m session
+
+>> iscsiadm -m session -P0                      [for troubleshooting]
+]]]]]]]------------------------------------------------------[[[[[[[
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=================================================================================================
+ON ISCSI SERVER
+
+1. Check the available disk drives:
+
+
+fdisk -l
+
+This command lists all disk partitions.
+
+2. Create physical volumes for the new drives:
+
+
+pvcreate /dev/sdc /dev/sdb
+
+This command creates physical volumes on the specified devices, which can be used to build a volume group.
+
+3. Create a volume group:
+
+
+vgcreate vg_iscsi /dev/sdb /dev/sdc
+
+This creates a volume group named `vg_iscsi` using the previously created physical volumes.
+
+4. Create logical volumes:
+
+
+lvcreate -n lv_iscsi-disk-01 -l 1G vg_iscsi
+lvcreate -n lv_iscsi-disk-01 -L 1G vg_iscsi
+
+These commands create two logical volumes named `lv_iscsi-disk-01` in the volume group `vg_iscsi`.
+
+5. Check the logical volumes:
+
+
+lvs
+
+This displays the information about all available logical volumes.
+
+6. Install the package `targetcli`:
+
+
+yum install targetcli
+
+This installs `targetcli`, a command-line interface for managing Linux kernel storage targets.
+
+7. Configure the target and map it to the iSCSI client:
+
+
+targetcli
+cd backstores/block
+create block1 /dev/mapper/vg_iscsi-lv_iscsi--disk--01
+cd iscsi
+create iqn.2022-12.cdac.acts.hpcsa.sbm:disk1
+cd iqn.2022-12.cdac.acts.hpcsa.sbm:disk1/tpg1/acls
+create iqn.2022-12.acts.student:306631cea220 #client PC iscsi initiator name
+cd iscsi/iqn.2022-12.cdac.acts.hpcsa.sbm:disk1/tpg1/luns
+create /backstores/block/block1
+exit
+
+These commands create an iSCSI target using `targetcli`, associate a block device with it, and map the iSCSI initiator (client) to the target.
+
+8. Restart the `target` service:
+
+
+systemctl restart target
+
+This command restarts the `target` service, applying any changes made to its configuration.
+
+9. Check the status of the `target` service:
+
+
+systemctl status target
+
+This displays the status of the `target` service.
+
+---
+
+ON ISCSI CLIENT AGAIN
+
+1. Login to the iSCSI target:
+
+
+iscsiadm -m -t st -p 192.168.76.XXX --login 
+server ip
+
+This command logs in to the iSCSI target on the specified IP address.
+
+2. Discover the iSCSI target:
+
+
+iscsiadm -m discovery -t st -p 192.168.76.XXX --login #XXX=server IP
+
+This command discovers iSCSI targets on the specified IP address.
+
+3. Check the available disk drives again:
+
+
+fdisk -l
+
+This command lists all disk partitions, including the new iSCSI device.
+
+4. Format and mount the new iSCSI disk:
+
+
+fdisk /dev/sdx #use X=iscsi mount disk
+#Press n then enter enter
+#Press key w 
+fdisk -l
+mkdir /mnt/disk-1
+mkfs.ext4 /dev/sdx1
+mount /dev/sdh1 /mnt/disk-1/
+
+These commands create a new partition on the iSCSI disk, format it with the ext4 filesystem, and mount it at `/mnt/disk-1`.
